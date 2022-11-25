@@ -1,4 +1,6 @@
+#include <stdbool.h>
 #include <stdio.h>
+#include <math.h>
 
 float average(int num[], size_t size){
     int sum = 0;
@@ -11,9 +13,30 @@ float average(int num[], size_t size){
     return avg;
 }
 
+bool isPrime(int num){
+    bool flag = true;
+    for (int i = 2; i <= sqrt(num); i++) {
+  
+        // If n is divisible by any number between
+        // 2 and n/2, it is not prime
+        if (num % i == 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void print_prime(int num[], size_t size){
+    for(int i=0;i<size;i++){
+        if (isPrime(num[i])) printf("%d\n", num[i]);
+    }
+    
+}
+
 int main() {
-    int num[] = {2, 4, 2, 4};
+    int num[] = {2, 3, 5, 4};
     size_t size = sizeof(num)/sizeof(int);
-    printf("%.3f", average(num, size));
+    printf("%.3f\n", average(num, size));
+    print_prime(num, size);
     return 0;
 }
