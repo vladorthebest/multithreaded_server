@@ -6,44 +6,84 @@
 #include <arpa/inet.h> 
 #include <unistd.h>
 #include "errproc.h"
+#include <pthread.h>
+
+#define SERVERPORT 15151
+#define BUFSIZE 3000
+
+
+void * socketThread (void *arg){
+    int newSocket = *((int *)arg);
+    size_t nread;
+    char buf[BUFSIZE];
+    char *p_buf;
+    int k, len_buf;
+       
+    
+    while (1) {
+        // Reading
+        nread = recv(newSocket, buf, BUFSIZE, 0);
+        if (is_Read(nread) == 0){
+            break;
+        }
+        printf("%s", buf);
+
+        if (strcmp(buf, "exit") == 0){
+            break;
+        } 
+    }
+
+    close(newSocket);
+    pthread_exit(NULL);  
+}
+
+
 
 int main(int argc, char **argv)
 {
-    // create Socket
-    int server = Socket(AF_INET, SOCK_STREAM, 0);
+    // create Listen Socket
+    int socket_user = Socket(AF_INET, SOCK_STREAM, 0);
 
     // setting Socket
     struct sockaddr_in adr;
     adr.sin_family = AF_INET;
     adr.sin_addr.s_addr = INADDR_ANY;  
-    adr.sin_port = htons(15151); 
-    Bind(server, (struct sockaddr*)&adr, sizeof(adr));
+    adr.sin_port = htons(SERVERPORT); 
+    Bind(socket_user, (struct sockaddr*)&adr, sizeof(adr));
 
     // Listen
-    Listen(server, 4);
-
-    // Accept
-    struct sockaddr_in client;  
-    memset(&client, 0, sizeof(client));  
-    socklen_t len = sizeof(client); 
-    int fb = Accept(server, (struct sockaddr*)&client, &len);
-
-    // Reading
-    size_t nread;
-    char buf[256];
-    nread = recv(fb, buf, 256, 0);
-    if(nread == -1){
-        perror("read failed!\n");
-        exit(EXIT_FAILURE);
+    if (listen(socket_user, 10) == 0) {
+        printf("Listening\n");
     }
-    else if(nread == 0){
-        printf("\nclient disconnected.\n");
-    }
-    else{
-        printf("%s", buf);
+    else {
+        printf("Error\n");
     }
 
-    close(server);
-    close(fb);
+    // Date for new socket
+    pthread_t tid[15];
+    int i = 0;
+    struct sockaddr_in serverStorage;
+    int newSocket;
+    socklen_t addr_size;
+
+    while(1)
+    {
+        // Accept
+        addr_size = sizeof serverStorage;
+        newSocket = Accept(socket_user, (struct sockaddr*)&serverStorage, &addr_size);
+
+        if( pthread_create(&tid[i++], NULL, socketThread, &newSocket) != 0 ){
+            printf("Failed to create thread\n");
+        }
+
+        if(i >= 10){
+            i = 0;
+            while(i<50){
+                pthread_join(tid[i++],NULL);
+            }
+            i = 0;
+        }
+           
+    }
     return 0;
 }

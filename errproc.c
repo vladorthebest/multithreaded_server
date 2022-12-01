@@ -6,6 +6,25 @@
 #include <stdlib.h>  
 #include <unistd.h> 
 
+int is_Read(int nread){
+    if(nread == -1){
+        perror("read failed!\n");
+        exit(EXIT_FAILURE);
+    }
+    if(nread == 0){
+        printf("\nclient disconnected.\n");
+        return 0;
+    }
+}
+
+void Connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen){
+    int res = connect(sockfd, addr, addrlen);
+    if(res == -1){
+        perror("cannot create socket!\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
 int Socket(int domain, int type, int protocol){
     int sock_desc = socket(domain, type, protocol);
     if (sock_desc == -1)
