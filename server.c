@@ -13,31 +13,52 @@
 
 
 void * socketThread (void *arg){
+    // New Socket
     int newSocket = *((int *)arg);
+    // Buffer
     size_t nread;
     char buf[BUFSIZE];
     char *p_buf;
     int k, len_buf;
-       
     
-    while (1) {
-        // Reading
-        nread = recv(newSocket, buf, BUFSIZE, 0);
-        if (is_Read(nread) == 0){
-            break;
+    // Pipe
+    int pipeio[2];
+    pipe(pipeio);
+
+    // New Process
+    pid_t pid = fork();
+    int counter = 0;
+
+    if (pid == 0){
+        // Child
+        int i = 0;
+        for (; i < 5; ++i)
+        {
+            printf("child process: counter=%d\n", ++counter);
         }
-        printf("%s", buf);
+    } else if (pid > 0) {
+        // Parent
+        while (1) {
+            // Reading
+            nread = recv(newSocket, buf, BUFSIZE, 0);
+            if (is_Read(nread) == 0){
+                break;
+            }
+            printf("%s", buf);
 
         if (strcmp(buf, "exit") == 0){
-            break;
-        } 
+                break;
+            }
+            else if (strcmp(buf, "start\n") == 0){       
+            }
+        }
+    } else {
+        printf("fork() failed!\n");
     }
-
+    
     close(newSocket);
     pthread_exit(NULL);  
 }
-
-
 
 int main(int argc, char **argv)
 {
@@ -60,7 +81,7 @@ int main(int argc, char **argv)
     }
 
     // Date for new socket
-    pthread_t tid[15];
+    pthread_t tid[10];
     int i = 0;
     struct sockaddr_in serverStorage;
     int newSocket;
@@ -78,7 +99,7 @@ int main(int argc, char **argv)
 
         if(i >= 10){
             i = 0;
-            while(i<50){
+            while(i<10){
                 pthread_join(tid[i++],NULL);
             }
             i = 0;
