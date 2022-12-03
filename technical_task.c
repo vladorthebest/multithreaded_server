@@ -30,13 +30,4 @@ void print_prime(int num[], size_t size){
     for(int i=0;i<size;i++){
         if (isPrime(num[i])) printf("%d\n", num[i]);
     }
-    
-}
-
-int main() {
-    int num[] = {2, 3, 5, 4};
-    size_t size = sizeof(num)/sizeof(int);
-    printf("%.3f\n", average(num, size));
-    print_prime(num, size);
-    return 0;
 }
