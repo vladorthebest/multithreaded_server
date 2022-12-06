@@ -6,6 +6,7 @@
 #include <arpa/inet.h> 
 #include <unistd.h>
 #include "errproc.h"
+#include "technical_task.h"
 #include <pthread.h>
 
 #define SERVERPORT 15151
@@ -16,17 +17,16 @@ void childProc(int pipeio[2]){
     int intbuf[100];
     close(pipeio[1]);
     int i=0;
-    while (1) {
+    while (strcmp(buf, "exit\n") != 0) {
         read(pipeio[0], buf, sizeof(buf));
-        
-        // Exit
-        if (strcmp(buf, "exit\n") == 0){
-            break;
-        } 
-        // Input Data
-        else if (strcmp(buf, "data\n") == 0){
-            // Pipe data to intbuf
-            while(i < 100){
+
+        if (strcmp(buf, "avg\n") == 0){
+            int size;
+            read(pipeio[0], buf, sizeof(buf));
+            size = atoi(buf);
+
+            // Input Data
+            while(i < size){
                 read(pipeio[0], buf, sizeof(buf));
 
                 // End Input Data
@@ -36,6 +36,16 @@ void childProc(int pipeio[2]){
                 intbuf[i] = atoi(buf);
                 i++;
             }
+
+            // avg
+            pthread_t tid;
+            data listAvg;
+            float* avg;
+            listAvg.size = size;
+            listAvg.arr = &intbuf[0]; 
+            pthread_create(&tid, NULL, threadAvg, &listAvg);
+            pthread_join(tid, (void **) &avg);
+            printf("Result: %f", *avg);
         }
     }
 }

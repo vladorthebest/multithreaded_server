@@ -2,10 +2,17 @@
 #define TECHNICAL_TASK_H
 #include <stdio.h>
 
-float average(int num[], size_t size);
+typedef struct data{
+    int* arr;
+    int size;
+} data;
 
-bool isPrime(int num);
+void* threadAvg(void *arg);
 
-void print_prime(int num[], size_t size);
+// float average(int num[]);
+
+// int isPrime(int num);
+
+// void print_prime(int num[]);
 
 #endif
