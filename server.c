@@ -11,53 +11,70 @@
 #define SERVERPORT 15151
 #define BUFSIZE 3000
 
+void childProc(int pipeio[2]){
+    char buf[BUFSIZE];
+    int intbuf[100];
+    close(pipeio[1]);
+    int i=0;
+    while (1) {
+        read(pipeio[0], buf, sizeof(buf));
+        
+        // Exit
+        if (strcmp(buf, "exit\n") == 0){
+            break;
+        } 
+        // Input Data
+        else if (strcmp(buf, "data\n") == 0){
+            
+        }
+    }
+}
 
-void * socketThread (void *arg){
-    // New Socket
-    int newSocket = *((int *)arg);
+
+void parentProc(int newSocket, int pipeio[2]){
     // Buffer
     size_t nread;
     char buf[BUFSIZE];
     char *p_buf;
     int k, len_buf;
-    
+
+    close(pipeio[0]);
+
+    while (1) {
+        // Reading
+        nread = recv(newSocket, buf, BUFSIZE, 0);
+        printf("%s", buf);
+        write(pipeio[1], buf, (strlen(buf)+1));
+        if (strcmp(buf, "exit\n") == 0){
+            break;
+        }
+    }
+}
+
+void * socketThread (void *arg){
+    // New Socket
+    int newSocket = *((int *)arg);
+
     // Pipe
     int pipeio[2];
     pipe(pipeio);
 
     // New Process
     pid_t pid = fork();
-    int counter = 0;
 
     if (pid == 0){
         // Child
-        int i = 0;
-        for (; i < 5; ++i)
-        {
-            printf("child process: counter=%d\n", ++counter);
-        }
+        childProc(pipeio);
+
     } else if (pid > 0) {
         // Parent
-        while (1) {
-            // Reading
-            nread = recv(newSocket, buf, BUFSIZE, 0);
-            if (is_Read(nread) == 0){
-                break;
-            }
-            printf("%s", buf);
-
-        if (strcmp(buf, "exit") == 0){
-                break;
-            }
-            else if (strcmp(buf, "start\n") == 0){       
-            }
-        }
+        parentProc(newSocket, pipeio);
+        
     } else {
         printf("fork() failed!\n");
     }
-    
     close(newSocket);
-    pthread_exit(NULL);  
+    pthread_exit(NULL);
 }
 
 int main(int argc, char **argv)
@@ -67,7 +84,7 @@ int main(int argc, char **argv)
 
     // setting Socket
     struct sockaddr_in adr;
-    adr.sin_family = AF_INET;
+    adr.sin_family = AF_INET; // IPv4
     adr.sin_addr.s_addr = INADDR_ANY;  
     adr.sin_port = htons(SERVERPORT); 
     Bind(socket_user, (struct sockaddr*)&adr, sizeof(adr));
