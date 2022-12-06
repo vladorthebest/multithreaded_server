@@ -25,7 +25,17 @@ void childProc(int pipeio[2]){
         } 
         // Input Data
         else if (strcmp(buf, "data\n") == 0){
-            
+            // Pipe data to intbuf
+            while(i < 100){
+                read(pipeio[0], buf, sizeof(buf));
+
+                // End Input Data
+                if (strcmp(buf, "end\n") == 0){
+                    break;
+                }
+                intbuf[i] = atoi(buf);
+                i++;
+            }
         }
     }
 }
