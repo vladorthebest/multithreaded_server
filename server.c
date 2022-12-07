@@ -1,6 +1,7 @@
 #include <sys/socket.h>  
 #include <netinet/in.h>  
-#include <stdio.h>  
+#include <stdio.h>
+#include <sys/types.h>  
 #include <string.h> 
 #include <stdlib.h>  
 #include <arpa/inet.h> 
@@ -8,67 +9,95 @@
 #include "errproc.h"
 #include "technical_task.h"
 #include <pthread.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 #define SERVERPORT 15151
 #define BUFSIZE 3000
 
-void childProc(int pipeio[2]){
+int socket_user;
+
+void sig_handler(int signo)
+{
+  if (signo == SIGINT)
+    printf("Close server\n");
+    close(socket_user);
+    exit(0);
+}
+
+void childProc(int pipeSC[2], int pipeCS[2]){
     char buf[BUFSIZE];
     int intbuf[100];
-    close(pipeio[1]);
-    int i=0;
-    while (strcmp(buf, "exit\n") != 0) {
-        read(pipeio[0], buf, sizeof(buf));
+    close(pipeSC[1]);
+    close(pipeCS[0]);
+    int readPipe = pipeSC[0];
+    int writePipe = pipeCS[1];
+    pthread_t tid;
+    // Read parent tid
+    pid_t parent = getppid();
+    data listAvg;
+    float* avg;
 
+    while (strcmp(buf, "exit\n") != 0) {
+        read(readPipe, buf, sizeof(buf));
+        printf("%s", buf);
         if (strcmp(buf, "avg\n") == 0){
             int size;
-            read(pipeio[0], buf, sizeof(buf));
+            read(readPipe, buf, sizeof(buf));
+            printf("Size: %s", buf);
             size = atoi(buf);
-
             // Input Data
-            while(i < size){
-                read(pipeio[0], buf, sizeof(buf));
-
-                // End Input Data
-                if (strcmp(buf, "end\n") == 0){
-                    break;
-                }
+            for(int i=0;i<size;i++){
+                read(readPipe, buf, sizeof(buf));
+                printf("Data %d: %s", i+1, buf);
                 intbuf[i] = atoi(buf);
-                i++;
             }
 
-            // avg
-            pthread_t tid;
-            data listAvg;
-            float* avg;
+            // avg thread
+
             listAvg.size = size;
-            listAvg.arr = &intbuf[0]; 
+            listAvg.arr = &intbuf[0];
             pthread_create(&tid, NULL, threadAvg, &listAvg);
-            pthread_join(tid, (void **) &avg);
-            printf("Result: %f", *avg);
+            pthread_join(tid, (void **)&avg);
+            gcvt(*avg, 6,buf);
+            printf("Result: %s\n", buf);
+            write(writePipe, buf, (strlen(buf)+1));
         }
     }
 }
 
-
-void parentProc(int newSocket, int pipeio[2]){
+void parentProc(int newSocket, int pipeSC[2], int pipeCS[2], pid_t pidC){
     // Buffer
     size_t nread;
     char buf[BUFSIZE];
     char *p_buf;
     int k, len_buf;
 
-    close(pipeio[0]);
+    close(pipeSC[0]);
+    close(pipeCS[1]);
+    int writePipe = pipeSC[1];
+    int readPipe = pipeCS[0];
 
     while (1) {
         // Reading
         nread = recv(newSocket, buf, BUFSIZE, 0);
-        printf("%s", buf);
-        write(pipeio[1], buf, (strlen(buf)+1));
+        // printf("%s", buf);
         if (strcmp(buf, "exit\n") == 0){
+            kill(pidC, SIGKILL);
+            break;
+        } else if (strcmp(buf, "res\n") == 0){
             break;
         }
+        // send to client from pipe
+        write(writePipe, buf, (strlen(buf)+1));
+
     }
+    while(1){
+        read(readPipe, buf, sizeof(buf));
+        printf("%s", buf);
+        // send(newSocket, buf, BUFSIZE, 0);
+    }
+    
 }
 
 void * socketThread (void *arg){
@@ -76,20 +105,22 @@ void * socketThread (void *arg){
     int newSocket = *((int *)arg);
 
     // Pipe
-    int pipeio[2];
-    pipe(pipeio);
+    int pipeSC[2];
+    pipe(pipeSC); // Server -> Client
+    int pipeCS[2];
+    pipe(pipeCS); // Client -> Server
 
     // New Process
     pid_t pid = fork();
 
     if (pid == 0){
         // Child
-        childProc(pipeio);
+        childProc(pipeSC, pipeCS);
 
     } else if (pid > 0) {
         // Parent
-        parentProc(newSocket, pipeio);
-        
+        signal(SIGINT, sig_handler);
+        parentProc(newSocket, pipeSC, pipeCS, pid);
     } else {
         printf("fork() failed!\n");
     }
@@ -97,10 +128,13 @@ void * socketThread (void *arg){
     pthread_exit(NULL);
 }
 
+
+
 int main(int argc, char **argv)
-{
+{   
+    
     // create Listen Socket
-    int socket_user = Socket(AF_INET, SOCK_STREAM, 0);
+    socket_user = Socket(AF_INET, SOCK_STREAM, 0);
 
     // setting Socket
     struct sockaddr_in adr;

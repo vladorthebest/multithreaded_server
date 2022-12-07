@@ -8,7 +8,7 @@ void * threadAvg(void *arg)
 {   
     data* ptr = (data*)arg;
     int size = ptr->size;
-    printf("Size: %d\n", size);
+
     int sum = 0;
     for(int i=0;i<size;i++){
         sum += ptr->arr[i];
@@ -16,7 +16,7 @@ void * threadAvg(void *arg)
     float avg = sum/size;
     float* result = malloc(sizeof(float));
     *result = avg;
-    // printf("Avg: %f", avg);
+
     return (void *) result;
 }
 
