@@ -114,6 +114,7 @@ void parentProc(int newSocket, int pipeSC[2], pid_t pidC){
     char *p_buf;
     int k, len_buf;
 
+
     // Pipe
     close(pipeSC[0]);
     int writePipe = pipeSC[1];
@@ -169,7 +170,7 @@ void * socketThread (void *arg){
 
 int main(int argc, char **argv)
 {   
-    
+        printf("███████████████████████████\n█───█───█────█─█─█───█────█\n█─███─███─██─█─█─█─███─██─█\n█───█───█────█─█─█───█────█\n███─█─███─█─██───█─███─█─██\n█───█───█─█─███─██───█─█─██\n███████████████████████████\n");
     // create Listen Socket
     socket_user = Socket(AF_INET, SOCK_STREAM, 0);
 
