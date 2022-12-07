@@ -27,7 +27,7 @@
 int socket_user;
 
 //Timer
-#define TIMERSEC 10
+#define TIMERSEC 20
 timer_t timer;
 int users = 0;
 

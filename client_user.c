@@ -52,7 +52,7 @@ int main(){
 
 
         if (strcmp(buf, "exit\n") == 0){
-            printf("End working...");
+            printf("End working...\n");
             close(fb);
             break;
         }   
