@@ -1,7 +1,3 @@
-#include <stdbool.h>
-#include <stdio.h>
-#include <math.h>
-#include <stdlib.h>
 #include "technical_task.h"
 
 void * threadAvg(void *arg)

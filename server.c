@@ -7,6 +7,7 @@
 // My lib 
 #include "errproc.h"
 #include "technical_task.h"
+#include "timer.h"
 
 // Lib for sockets
 #include <sys/socket.h>  
@@ -25,13 +26,27 @@
 //Socket
 int socket_user;
 
-// Signal
-void sig_parent(int signo)
+//Timer
+#define TIMERSEC 10
+timer_t timer;
+int users = 0;
+
+
+// Signals
+void sig_parent()
 {
-  if (signo == SIGINT)
     printf("Close server\n");
     close(socket_user);
-    exit(0);
+    exit(0);    
+}
+
+void sig_timer(){
+    if (users == 0){
+        printf("Close server\n");
+        close(socket_user);
+        exit(0);
+    }
+    
 }
 
 void childProc(int pipeSC[2]){
@@ -142,6 +157,10 @@ void * socketThread (void *arg){
     }
 
     printf("Client end work!\n");
+    users--;
+    if (users == 0){
+        runTimer(timer, TIMERSEC);
+    }
     close(newSocket);
     pthread_exit(NULL);
 }
@@ -176,16 +195,21 @@ int main(int argc, char **argv)
     int newSocket;
     socklen_t addr_size;
 
+    // Create timer    
+    timer = createTimer(SIGQUIT);
+    signal(SIGQUIT, sig_timer);
+    
     while(1)
     {
         // Accept
         addr_size = sizeof serverStorage;
+        runTimer(timer, TIMERSEC);
         newSocket = Accept(socket_user, (struct sockaddr*)&serverStorage, &addr_size);
-
+        
         if( pthread_create(&tid[i++], NULL, socketThread, &newSocket) != 0 ){
             printf("Failed to create thread\n");
         }
-
+        users++;
         if(i >= 10){
             i = 0;
             while(i<10){
