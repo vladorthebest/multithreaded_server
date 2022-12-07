@@ -9,10 +9,7 @@ typedef struct data{
 
 void* threadAvg(void *arg);
 
-// float average(int num[]);
+void * threadisPrime(void * arg);
 
-// int isPrime(int num);
-
-// void print_prime(int num[]);
 
 #endif

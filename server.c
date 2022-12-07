@@ -1,23 +1,32 @@
-#include <sys/socket.h>  
-#include <netinet/in.h>  
+// Default Lib
 #include <stdio.h>
-#include <sys/types.h>  
 #include <string.h> 
-#include <stdlib.h>  
-#include <arpa/inet.h> 
+#include <stdlib.h> 
 #include <unistd.h>
+
+// My lib 
 #include "errproc.h"
 #include "technical_task.h"
+
+// Lib for sockets
+#include <sys/socket.h>  
+#include <netinet/in.h>
+#include <sys/types.h>
+#include <arpa/inet.h> 
+
+// Lib for sig and thread
 #include <pthread.h>
 #include <signal.h>
-#include <sys/wait.h>
 
+// Const
 #define SERVERPORT 15151
 #define BUFSIZE 3000
 
+//Socket
 int socket_user;
 
-void sig_handler(int signo)
+// Signal
+void sig_parent(int signo)
 {
   if (signo == SIGINT)
     printf("Close server\n");
@@ -25,24 +34,30 @@ void sig_handler(int signo)
     exit(0);
 }
 
-void childProc(int pipeSC[2], int pipeCS[2]){
+void childProc(int pipeSC[2]){
     char buf[BUFSIZE];
     int intbuf[100];
+
     close(pipeSC[1]);
-    close(pipeCS[0]);
     int readPipe = pipeSC[0];
-    int writePipe = pipeCS[1];
-    pthread_t tid;
-    // Read parent tid
-    pid_t parent = getppid();
+
+    // Arg for AVG
     data listAvg;
     float* avg;
+    int size;
+    pthread_t tidavg;
+
+    // isPrime
+    int num;
+    int* isPrime;
+    pthread_t tidpri;
 
     while (strcmp(buf, "exit\n") != 0) {
         read(readPipe, buf, sizeof(buf));
         printf("%s", buf);
+
+        // AVG
         if (strcmp(buf, "avg\n") == 0){
-            int size;
             read(readPipe, buf, sizeof(buf));
             printf("Size: %s", buf);
             size = atoi(buf);
@@ -54,50 +69,53 @@ void childProc(int pipeSC[2], int pipeCS[2]){
             }
 
             // avg thread
-
             listAvg.size = size;
             listAvg.arr = &intbuf[0];
-            pthread_create(&tid, NULL, threadAvg, &listAvg);
-            pthread_join(tid, (void **)&avg);
+            pthread_create(&tidavg, NULL, threadAvg, &listAvg);
+            pthread_join(tidavg, (void **)&avg);
             gcvt(*avg, 6,buf);
             printf("Result: %s\n", buf);
-            write(writePipe, buf, (strlen(buf)+1));
+        }
+
+        // IsPrime
+        if (strcmp(buf, "isprime\n") == 0){
+            read(readPipe, buf, sizeof(buf));
+            printf("Number: %s", buf);
+            num = atoi(buf);
+
+            pthread_create(&tidpri, NULL, threadisPrime, &num);
+            pthread_join(tidpri, (void **)&isPrime);
+            gcvt(*isPrime, 1,buf);
+            printf("Result: %s\n", buf);
+
         }
     }
 }
 
-void parentProc(int newSocket, int pipeSC[2], int pipeCS[2], pid_t pidC){
+void parentProc(int newSocket, int pipeSC[2], pid_t pidC){
     // Buffer
     size_t nread;
     char buf[BUFSIZE];
     char *p_buf;
     int k, len_buf;
 
+    // Pipe
     close(pipeSC[0]);
-    close(pipeCS[1]);
     int writePipe = pipeSC[1];
-    int readPipe = pipeCS[0];
+
 
     while (1) {
         // Reading
         nread = recv(newSocket, buf, BUFSIZE, 0);
-        // printf("%s", buf);
+        
+        write(writePipe, buf, (strlen(buf)+1));
+
         if (strcmp(buf, "exit\n") == 0){
             kill(pidC, SIGKILL);
             break;
-        } else if (strcmp(buf, "res\n") == 0){
-            break;
-        }
-        // send to client from pipe
-        write(writePipe, buf, (strlen(buf)+1));
+        } 
 
     }
-    while(1){
-        read(readPipe, buf, sizeof(buf));
-        printf("%s", buf);
-        // send(newSocket, buf, BUFSIZE, 0);
-    }
-    
 }
 
 void * socketThread (void *arg){
@@ -107,23 +125,23 @@ void * socketThread (void *arg){
     // Pipe
     int pipeSC[2];
     pipe(pipeSC); // Server -> Client
-    int pipeCS[2];
-    pipe(pipeCS); // Client -> Server
 
     // New Process
     pid_t pid = fork();
 
     if (pid == 0){
         // Child
-        childProc(pipeSC, pipeCS);
+        childProc(pipeSC);
 
     } else if (pid > 0) {
         // Parent
-        signal(SIGINT, sig_handler);
-        parentProc(newSocket, pipeSC, pipeCS, pid);
+        signal(SIGINT, sig_parent);
+        parentProc(newSocket, pipeSC, pid);
     } else {
         printf("fork() failed!\n");
     }
+
+    printf("Client end work!\n");
     close(newSocket);
     pthread_exit(NULL);
 }
